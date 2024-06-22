@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Google LLC
+// Copyright 2022-2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,6 +83,17 @@ static void settle_as_hold(void) {
   recursively_process_record(&tap_hold_record, STATE_HOLDING);
 }
 
+#ifdef ACHORDION_STREAK
+static void update_streak_timer(uint16_t keycode, keyrecord_t* record) {
+  if (achordion_streak_continue(keycode)) {
+    // We use 0 to represent an unset timer, so `| 1` to force a nonzero value.
+    streak_timer = record->event.time | 1;
+  } else {
+    streak_timer = 0;
+  }
+}
+#endif
+
 bool process_achordion(uint16_t keycode, keyrecord_t* record) {
   // Don't process events that Achordion generated.
   if (achordion_state == STATE_RECURSING) {
@@ -101,12 +112,7 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
   const bool is_mt = IS_QK_MOD_TAP(keycode);
   const bool is_tap_hold = is_mt || IS_QK_LAYER_TAP(keycode);
   // Check that this is a normal key event, don't act on combos.
-#ifdef IS_KEYEVENT
   const bool is_key_event = IS_KEYEVENT(record->event);
-#else
-  const bool is_key_event =
-      (record->event.key.row < 254 && record->event.key.col < 254);
-#endif
 
   if (achordion_state == STATE_RELEASED) {
     if (is_tap_hold && record->tap.count == 0 && record->event.pressed &&
@@ -135,7 +141,7 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
     }
 
 #ifdef ACHORDION_STREAK
-    streak_timer = (timer_read() + achordion_streak_timeout(keycode)) | 1;
+    update_streak_timer(keycode, record);
 #endif
     return true;  // Otherwise, continue with default handling.
   }
@@ -173,15 +179,12 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
 
   if (achordion_state == STATE_UNSETTLED && record->event.pressed) {
 #ifdef ACHORDION_STREAK
-    const bool is_streak = (streak_timer != 0);
-    streak_timer = (timer_read() + achordion_streak_timeout(keycode)) | 1;
+    const uint16_t s_timeout =
+        achordion_streak_chord_timeout(tap_hold_keycode, keycode);
+    const bool is_streak =
+        streak_timer && s_timeout &&
+        !timer_expired(record->event.time, (streak_timer + s_timeout));
 #endif
-
-    if(achordion_chord(tap_hold_keycode, &tap_hold_record, keycode, record))
-            dprintln("chord");
-
-    if(is_key_event)
-            dprintln("key");
 
     // Press event occurred on a key other than the active tap-hold key.
 
@@ -195,8 +198,10 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
     // events back into the handling pipeline so that QMK features and other
     // user code can see them. This is done by calling `process_record()`, which
     // in turn calls most handlers including `process_record_user()`.
-    if (!is_streak && (!is_key_event || (is_tap_hold && record->tap.count == 0) ||
-        achordion_chord(tap_hold_keycode, &tap_hold_record, keycode, record))) {
+    if (!is_streak &&
+        (!is_key_event || (is_tap_hold && record->tap.count == 0) ||
+         achordion_chord(tap_hold_keycode, &tap_hold_record, keycode,
+                         record))) {
       dprintln("Achordion: Plumbing hold press.");
       settle_as_hold();
 
@@ -228,6 +233,21 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
       tap_hold_record.event.pressed = false;
       // Plumb tap release event.
       recursively_process_record(&tap_hold_record, STATE_TAPPING);
+#ifdef ACHORDION_STREAK
+      update_streak_timer(keycode, record);
+      if (is_streak && is_key_event && is_tap_hold && record->tap.count == 0) {
+        // If we are in a streak and resolved the current tap-hold key as a tap
+        // consider the next tap-hold key as active to be resolved next.
+        update_streak_timer(tap_hold_keycode, &tap_hold_record);
+        const uint16_t timeout = achordion_timeout(keycode);
+        tap_hold_keycode = keycode;
+        tap_hold_record = *record;
+        hold_timer = record->event.time + timeout;
+        achordion_state = STATE_UNSETTLED;
+        pressed_another_key_before_release = false;
+        return false;
+      }
+#endif
     }
 
     recursively_process_record(record, achordion_state);  // Re-process event.
@@ -236,7 +256,7 @@ bool process_achordion(uint16_t keycode, keyrecord_t* record) {
 
 #ifdef ACHORDION_STREAK
   // update idle timer on regular keys event
-  streak_timer = (timer_read() + achordion_streak_timeout(keycode)) | 1;
+  update_streak_timer(keycode, record);
 #endif
   return true;
 }
@@ -249,7 +269,9 @@ void achordion_task(void) {
   }
 
 #ifdef ACHORDION_STREAK
-  if (streak_timer && timer_expired(timer_read(), streak_timer)) {
+#define MAX_STREAK_TIMEOUT 800
+  if (streak_timer &&
+      timer_expired(timer_read(), (streak_timer + MAX_STREAK_TIMEOUT))) {
     streak_timer = 0;  // Expired.
   }
 #endif
@@ -267,8 +289,6 @@ static bool on_left_hand(keypos_t pos) {
 
 bool achordion_opposite_hands(const keyrecord_t* tap_hold_record,
                               const keyrecord_t* other_record) {
-  dprintf("left thr %d %d %d \n", tap_hold_record->event.key.row,  tap_hold_record->event.key.col, on_left_hand(tap_hold_record->event.key));
-  dprintf("left or %d %d %d \n", other_record->event.key.row, other_record->event.key.col, on_left_hand(other_record->event.key));
   return on_left_hand(tap_hold_record->event.key) !=
          on_left_hand(other_record->event.key);
 }
@@ -293,8 +313,34 @@ __attribute__((weak)) bool achordion_eager_mod(uint8_t mod) {
 }
 
 #ifdef ACHORDION_STREAK
-__attribute__((weak)) uint16_t achordion_streak_timeout(uint16_t tap_hold_keycode) {
-  return 100;  // Default of 100 ms.
+__attribute__((weak)) bool achordion_streak_continue(uint16_t keycode) {
+  // If any mods other than shift or AltGr are held, don't continue the streak
+  if (get_mods() & (MOD_MASK_CG | MOD_BIT_LALT)) return false;
+  // This function doesn't get called for holds, so convert to tap version of
+  // keycodes
+  if (IS_QK_MOD_TAP(keycode)) keycode = QK_MOD_TAP_GET_TAP_KEYCODE(keycode);
+  if (IS_QK_LAYER_TAP(keycode)) keycode = QK_LAYER_TAP_GET_TAP_KEYCODE(keycode);
+  // Regular letters and punctuation continue the streak.
+  if (keycode >= KC_A && keycode <= KC_Z) return true;
+  switch (keycode) {
+    case KC_DOT:
+    case KC_COMMA:
+    case KC_QUOTE:
+    case KC_SPACE:
+      return true;
+  }
+  // All other keys end the streak
+  return false;
+}
+
+__attribute__((weak)) uint16_t achordion_streak_chord_timeout(
+    uint16_t tap_hold_keycode, uint16_t next_keycode) {
+  return achordion_streak_timeout(tap_hold_keycode);
+}
+
+__attribute__((weak)) uint16_t
+achordion_streak_timeout(uint16_t tap_hold_keycode) {
+  return 200;
 }
 #endif
 

@@ -84,10 +84,6 @@ bool achordion_chord(uint16_t tap_hold_keycode,
             return true;
     }
 
-    if (!IS_KEYEVENT(other_record->event)) {
-        return true;
-    }
-
     return achordion_opposite_hands(tap_hold_record, other_record);
 }
 
