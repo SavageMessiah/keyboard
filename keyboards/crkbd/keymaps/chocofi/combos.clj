@@ -1,5 +1,9 @@
 #!/bin/bb
 
+(ns combos
+  (:refer-clojure :exclude [keys])
+  (:require [clojure.string :as str]))
+
 (def keys {:a "LGUI_T(KC_A)"
            :r "LALT_T(KC_R)"
            :s "LCTL_T(KC_S)"
