@@ -4,6 +4,8 @@ Firmware for my [chocofi](https://github.com/pashutk/chocofi) keyboard.
 
 ![Diagram of keyboard layout](chocofi.png)
 
+[keyboard-layout-editor](http://www.keyboard-layout-editor.com/#/gists/5eae510979c5c30881f7894a1f748031)
+
 # Features
 
 * Colemak-dh
