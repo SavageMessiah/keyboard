@@ -33,3 +33,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define TAPPING_TERM 200
 #define COMBO_TERM 40
 #define COMBO_TERM_PER_COMBO
+#define CHORDAL_HOLD

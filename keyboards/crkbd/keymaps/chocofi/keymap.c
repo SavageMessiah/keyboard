@@ -17,14 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include QMK_KEYBOARD_H
-//https://getreuer.info/posts/keyboards/layer-lock/index.html
-#include "features/layer_lock.h"
-//https://getreuer.info/posts/keyboards/achordion/index.html
-#include "features/achordion.h"
-
-enum custom_keycodes {
-    LLOCK = SAFE_RANGE,
-};
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [0] = LAYOUT_split_3x6_3(
@@ -47,7 +39,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
        KC_NO,  KC_LGUI, KC_LALT, KC_LCTL, KC_LSFT, KC_NO,                        KC_NO,   KC_LEFT,KC_DOWN, KC_UP,   KC_RIGHT, KC_NO,
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-       KC_NO,  KC_NO,   KC_NO,   KC_NO,   KC_SPC,  LLOCK,                       KC_INS,  KC_HOME,KC_PGDN, KC_PGUP, KC_END,   KC_NO,
+       KC_NO,  KC_NO,   KC_NO,   KC_NO,   KC_SPC,  QK_LLCK,                      KC_INS,  KC_HOME,KC_PGDN, KC_PGUP, KC_END,   KC_NO,
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
                                           KC_NO,  _______,  KC_NO,     KC_ENT, KC_BSPC, KC_NO
                                       //`--------------------------'  `--------------------------'
@@ -60,35 +52,32 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
       KC_NO, LGUI_T(KC_1), LALT_T(KC_2), LCTL_T(KC_3), LSFT_T(KC_4), KC_5,       KC_6, RSFT_T(KC_7), RCTL_T(KC_8), LALT_T(KC_9), RGUI_T(KC_0), KC_NO,
   //|--------+--------+--------+--------+--------+--------|                    |--------+--------+--------+--------+--------+--------|
-      KC_NO,   KC_F11,  KC_F12,  KC_NO,   KC_NO,   KC_NO,                        LLOCK,   KC_BSPC, _______, _______, _______, KC_NO,
+      KC_NO,   KC_F11,  KC_F12,  KC_NO,   KC_NO,   KC_NO,                        QK_LLCK, KC_BSPC, _______, _______, _______, KC_NO,
   //|--------+--------+--------+--------+--------+--------+--------|  |--------+--------+--------+--------+--------+--------+--------|
                                          KC_ESC,   KC_SPC,  KC_TAB,      KC_NO,  _______, KC_NO
                                       //`--------------------------'  `--------------------------'
   ),
 };
 
-bool process_record_user(uint16_t keycode, keyrecord_t* record) {
-    if (!process_achordion(keycode, record)) { return false; }
-    if (!process_layer_lock(keycode, record, LLOCK)) { return false; }
+const char chordal_hold_layout[MATRIX_ROWS][MATRIX_COLS] PROGMEM =
+    LAYOUT_split_3x6_3(
+        'L', 'L', 'L', 'L', 'L', 'L',  'R', 'R', 'R', 'R', 'R', 'R', 
+        'L', 'L', 'L', 'L', 'L', 'L',  'R', 'R', 'R', 'R', 'R', 'R', 
+        'L', 'L', 'L', 'L', 'L', 'L',  'R', 'R', 'R', 'R', 'R', 'R', 
+                       'L', 'L', 'L',  'R', 'R', 'R'
+    );
 
-    return true;
-}
-
-bool achordion_chord(uint16_t tap_hold_keycode,
-                     keyrecord_t* tap_hold_record,
-                     uint16_t other_keycode,
-                     keyrecord_t* other_record) {
+bool get_chordal_hold(uint16_t tap_hold_keycode,
+                      keyrecord_t* tap_hold_record,
+                      uint16_t other_keycode,
+                      keyrecord_t* other_record) {
     switch (tap_hold_keycode) {
         case LT(2, KC_BSPC):
         case LT(1, KC_SPC):
             return true;
     }
 
-    return achordion_opposite_hands(tap_hold_record, other_record);
-}
-
-void matrix_scan_user(void) {
-    achordion_task();
+    return get_chordal_hold_default(tap_hold_record, other_record);
 }
 
 #include "combos.h"
