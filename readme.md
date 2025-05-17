@@ -9,15 +9,15 @@ Firmware for my [chocofi](https://github.com/pashutk/chocofi) keyboard.
 # Features
 
 * Colemak-dh
-* Homerow mods with [Achordion](https://getreuer.info/posts/keyboards/achordion/index.html) to tame them
+* Homerow mods with chordal hold to tame them
 * All symbols on combos that are usable from any layer
 * Too many layers hurt my brain so there's only two: nav and num
-* [Layer Lock](https://getreuer.info/posts/keyboards/layer-lock/index.html)
+* Layer lock
 * Capsword
 
 Combo code is generated from `combos.clj`, use [babashka](https://github.com/babashka/babashka)
 
 # Hardware
 
-Wired chocofi built by Beekeeb with 20g choc blues, modded with 1mm ball bearings in the stem holes to reduce travel.
+Wired chocofi built by Beekeeb with ambients nocturnals
 Bobtail tenting legs.
