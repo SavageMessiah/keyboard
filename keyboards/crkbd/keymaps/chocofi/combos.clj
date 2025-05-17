@@ -79,6 +79,6 @@
         (conj "};"))))
 
 (->> combos
-    combos->header-lines
-    (str/join "\n")
-    (spit "combos.h"))
+     combos->header-lines
+     (str/join "\n")
+     (spit "combos.h"))
