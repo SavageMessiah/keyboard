@@ -30,7 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // #define QUICK_TAP_TERM 0
 #define PERMISSIVE_HOLD
-#define TAPPING_TERM 200
+#define TAPPING_TERM 400
 #define COMBO_TERM 40
 #define COMBO_TERM_PER_COMBO
 #define CHORDAL_HOLD
