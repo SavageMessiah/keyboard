@@ -14,8 +14,10 @@
            :o "RGUI_T(KC_O)"})
 
 (defn kw->key [kw]
-  (let [default (str "KC_" (str/upper-case (name kw)))]
-    (get keys kw default)))
+  (if (string? kw)
+    kw
+    (let [default (str "KC_" (str/upper-case (name kw)))]
+      (get keys kw default))))
 
 (def combos
   {[:w :p] :tilde
@@ -39,6 +41,10 @@
    [:l :u] :coln
    [:u :y] :dlr
    [:e :l] :perc
+
+   [:r :s :t] "OSM(MOD_LSFT)"
+
+   [:n :e :i] "OSM(MOD_RSFT)"
 
    [:e :h] :grv
    [:h :dot] :ampr
